@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Los Juegos del Hambre: Resumen interactivo</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Cinzel (épico/distópico) e Inter (legibilidad limpia) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Cinzel', 'serif'],
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              bg: 'var(--bg-primary)',
+              surface: 'var(--bg-surface)',
+              surfaceAlt: 'var(--bg-surface-alt)',
+              fire: 'var(--accent-fire)',
+              gold: 'var(--accent-gold)',
+              forest: 'var(--accent-forest)',
+              text: 'var(--text-primary)',
+              muted: 'var(--text-muted)',
+              border: 'var(--border-color)',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Variables CSS para alternar entre Modo Oscuro (Capitolio/Arena) y Modo Distrito 12 (Veta/Bosque) */
+    :root {
+      --bg-primary: #0B0B0D;
+      --bg-surface: #141418;
+      --bg-surface-alt: #1C1C22;
+      --accent-fire: #D7263D;
+      --accent-gold: #D4A017;
+      --accent-forest: #2F4F3A;
+      --text-primary: #F5F1E6;
+      --text-muted: #A9A498;
+      --border-color: rgba(212, 160, 23, 0.22);
+      --hero-overlay: radial-gradient(circle at 50% 45%, rgba(215, 38, 61, 0.16), rgba(11, 11, 13, 0.94) 75%);
+    }
+
+    body.theme-d12 {
+      --bg-primary: #1B1713;
+      --bg-surface: #26201A;
+      --bg-surface-alt: #312921;
+      --accent-fire: #C85A32;
+      --accent-gold: #D9A74A;
+      --accent-forest: #3E5C45;
+      --text-primary: #EFE6D5;
+      --text-muted: #B9AE9C;
+      --border-color: rgba(217, 167, 74, 0.28);
+      --hero-overlay: radial-gradient(circle at 50% 45%, rgba(62, 92, 69, 0.28), rgba(27, 23, 21, 0.95) 75%);
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      transition: background-color 0.45s ease, color 0.45s ease;
+      overflow-x: hidden;
+    }
+
+    /* Animación de entrada de fuego para el título principal */
+    @keyframes fireReveal {
+      0% {
+        opacity: 0;
+        transform: translateY(22px) scale(0.96);
+        filter: blur(8px);
+        text-shadow: 0 0 35px #D7263D, 0 0 60px #D4A017;
+      }
+      60% {
+        opacity: 1;
+        filter: blur(0px);
+        text-shadow: 0 0 24px rgba(215, 38, 61, 0.7), 0 0 40px rgba(212, 160, 23, 0.45);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        text-shadow: 0 4px 24px rgba(215, 38, 61, 0.35);
+      }
+    }
+
+    .animate-fire-title {
+      animation: fireReveal 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Niebla sutil en movimiento */
+    @keyframes mistDrift {
+      0% { transform: translateX(-6%) translateY(0); }
+      50% { transform: translateX(6%) translateY(-8px); }
+      100% { transform: translateX(-6%) translateY(0); }
+    }
+    .animate-mist {
+      animation: mistDrift 16s ease-in-out infinite;
+    }
+
+    /* Tren animado hacia el Capitolio */
+    @keyframes trainMove {
+      0% { transform: translateX(-110%); }
+      100% { transform: translateX(220%); }
+    }
+    .animate-train {
+      animation: trainMove 7s linear infinite;
+    }
+
+    /* Efecto 3D Flip para tarjetas de símbolos */
+    .perspective-1000 {
+      perspective: 1000px;
+    }
+    .flip-card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.65s cubic-bezier(0.4, 0.2, 0.2, 1);
+      transform-style: preserve-3d;
+    }
+    .flip-card.flipped .flip-card-inner {
+      transform: rotateY(180deg);
+    }
+    .flip-card-front, .flip-card-back {
+      position: absolute;
+      inset: 0;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      border-radius: 1rem;
+    }
+    .flip-card-back {
+      transform: rotateY(180deg);
+    }
+
+    /* Utilidades de aparición al hacer scroll */
+    .reveal-on-scroll {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal-on-scroll.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Estilos de impresión limpios */
+    @media print {
+      nav, #ember-canvas, button, .no-print {
+        display: none !important;
+      }
+      body {
+        background: #ffffff !important;
+        color: #111111 !important;
+      }
+      .print-card {
+        border: 1px solid #cccccc !important;
+        background: #ffffff !important;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body class="font-sans antialiased selection:bg-brand-fire selection:text-white">
+
+  <!-- Barra de progreso de lectura superior -->
+  <div class="fixed top-0 left-0 w-full h-1 z-50 bg-transparent pointer-events-none">
+    <div id="reading-progress" class="h-full bg-gradient-to-r from-brand-fire via-brand-gold to-brand-fire w-0 transition-all duration-150"></div>
+  </div>
+
+  <!-- 2. BARRA DE NAVEGACIÓN FIJA -->
+  <header id="navbar" class="fixed top-1 left-0 w-full z-40 transition-all duration-300 px-4 sm:px-6 lg:px-10 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-300" id="nav-container">
+      <!-- Marca / Sinsajo minimalista -->
+      <a href="#hero" class="flex items-center gap-2.5 group focus:outline-none">
+        <span class="w-9 h-9 rounded-xl bg-brand-fire/20 border border-brand-gold/40 flex items-center justify-center text-brand-gold group-hover:scale-105 transition-transform">
+          <!-- Icono SVG minimalista de arco y flecha -->
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M5 19L19 5M19 5H13M19 5V11" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 11C6.5 6 13 4 19 5C20 11 18 17.5 13 20" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="font-display font-bold text-sm sm:text-base tracking-wider uppercase text-brand-text">
+          Panem <span class="text-brand-gold">I–XIX</span>
+        </span>
+      </a>
+
+      <!-- Enlaces Desktop -->
+      <nav class="hidden lg:flex items-center gap-6 text-sm font-medium text-brand-muted">
+        <a href="#introduccion" class="hover:text-brand-gold transition-colors">Introducción</a>
+        <a href="#resumen" class="hover:text-brand-gold transition-colors">Resumen</a>
+        <a href="#personajes" class="hover:text-brand-gold transition-colors">Personajes</a>
+        <a href="#temas" class="hover:text-brand-gold transition-colors">Temas</a>
+        <a href="#linea-tiempo" class="hover:text-brand-gold transition-colors">Línea de tiempo</a>
+        <a href="#curiosidades" class="hover:text-brand-gold transition-colors">Curiosidades</a>
+        <a href="#reflexion" class="hover:text-brand-gold transition-colors">Reflexión</a>
+      </nav>
+
+      <!-- Controles: Botón de Tema + Menú Hamburguesa -->
+      <div class="flex items-center gap-2.5">
+        <button id="theme-toggle" type="button" aria-label="Cambiar tema visual"
+          class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border border-brand-border bg-brand-surface/80 hover:border-brand-gold text-brand-text transition-all shadow-sm">
+          <span id="theme-dot" class="w-2.5 h-2.5 rounded-full bg-brand-fire inline-block"></span>
+          <span id="theme-label">Modo Oscuro</span>
+        </button>
+
+        <button id="mobile-menu-btn" type="button" aria-label="Abrir menú" aria-expanded="false"
+          class="lg:hidden p-2.5 rounded-xl border border-brand-border bg-brand-surface/80 text-brand-text hover:text-brand-gold focus:outline-none">
+          <svg id="icon-menu-open" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+          <svg id="icon-menu-close" class="w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Menú desplegable móvil -->
+    <div id="mobile-menu" class="hidden lg:hidden mt-2 mx-auto max-w-7xl rounded-2xl bg-brand-surface/95 backdrop-blur-md border border-brand-border p-4 shadow-2xl">
+      <div class="flex flex-col space-y-2 text-sm font-medium">
+        <a href="#introduccion" class="mobile-link px-3 py-2.5 rounded-xl hover:bg-brand-surfaceAlt text-brand-text">Introducción</a>
+        <a href="#resumen" class="mobile-link px-3 py-2.5 rounded-xl hover:bg-brand-surfaceAlt text-brand-text">Resumen por etapas</a>
+        <a href="#personajes" class="mobile-link px-3 py-2.5 rounded-xl hover:bg-brand-surfaceAlt text-brand-text">Personajes principales</a>
+        <a href="#temas" class="mobile-link px-3 py-2.5 rounded-xl hover:bg-brand-surfaceAlt text-brand-text">Temas centrales</a>
+        <a href="#linea-tiempo" class="mobile-link px-3 py-2.5 rounded-xl hover:bg-brand-surfaceAlt text-brand-text">Línea de tiempo</a>
+        <a href="#curiosidades" class="mobile-link px-3 py-2.5 rounded-xl hover:bg-brand-surfaceAlt text-brand-text">Curiosidades y símbolos</a>
+        <a href="#reflexion" class="mobile-link px-3 py-2.5 rounded-xl hover:bg-brand-surfaceAlt text-brand-text">Reflexión personal</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 1. HERO A PANTALLA COMPLETA -->
+  <section id="hero" class="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-16 px-4">
+    <!-- Canvas de brasas ascendentes -->
+    <canvas id="ember-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-0"></canvas>
+
+    <!-- Capa de degradado atmosférico -->
+    <div class="absolute inset-0 pointer-events-none z-0" style="background: var(--hero-overlay);"></div>
+
+    <!-- Bosque oscuro SVG en el horizonte inferior -->
+    <svg class="absolute bottom-0 left-0 w-full h-44 sm:h-64 pointer-events-none z-0 opacity-75" viewBox="0 0 1440 320" preserveAspectRatio="none">
+      <path fill="var(--accent-forest)" fill-opacity="0.35" d="M0,260 L40,210 L75,255 L120,180 L165,250 L210,160 L260,255 L320,190 L375,260 L430,150 L490,250 L550,175 L610,255 L680,140 L745,250 L810,185 L875,260 L940,155 L1005,250 L1075,170 L1140,255 L1210,145 L1280,250 L1350,185 L1400,255 L1440,220 L1440,320 L0,320 Z"></path>
+      <path fill="#070709" fill-opacity="0.88" d="M0,290 L55,230 L100,285 L155,205 L205,285 L270,220 L330,290 L395,195 L455,285 L520,215 L585,290 L650,190 L720,285 L790,210 L860,290 L930,200 L995,285 L1065,220 L1130,290 L1200,195 L1270,285 L1340,215 L1400,285 L1440,250 L1440,320 L0,320 Z"></path>
+    </svg>
+
+    <!-- Niebla animada -->
+    <div class="animate-mist absolute bottom-12 -left-10 w-[120%] h-32 bg-gradient-to-t from-brand-forest/20 via-brand-gold/5 to-transparent blur-2xl pointer-events-none z-0"></div>
+
+    <!-- Silueta minimalista de arco y flecha de fondo -->
+    <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-15">
+      <svg class="w-80 h-80 sm:w-[28rem] sm:h-[28rem] text-brand-gold" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M45 155 C 35 90, 90 35, 155 45" stroke-linecap="round"/>
+        <line x1="45" y1="155" x2="155" y2="45" stroke-dasharray="3 3" stroke-width="1"/>
+        <line x1="35" y1="165" x2="168" y2="32" stroke-width="2"/>
+        <polygon points="168,32 154,35 165,46" fill="currentColor"/>
+        <circle cx="100" cy="100" r="88" stroke-opacity="0.35"/>
+      </svg>
+    </div>
+
+    <!-- Contenido principal del Hero -->
+    <div class="relative z-10 max-w-4xl mx-auto text-center space-y-6">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-surface/80 border border-brand-gold/30 text-xs sm:text-sm font-medium tracking-widest uppercase text-brand-gold shadow-lg">
+        <span class="w-2 h-2 rounded-full bg-brand-fire animate-ping"></span>
+        <span>Suzanne Collins · Capítulos 1 al 19</span>
+      </div>
+
+      <h1 class="animate-fire-title font-display font-extrabold text-4xl sm:text-6xl md:text-7xl tracking-tight leading-tight text-brand-text">
+        Los Juegos del Hambre
+      </h1>
+
+      <p class="max-w-2xl mx-auto text-base sm:text-xl text-brand-muted leading-relaxed font-light">
+        Un resumen interactivo de la historia de Katniss Everdeen y Panem
+      </p>
+
+      <div class="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a href="#resumen"
+          class="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-brand-fire hover:bg-brand-fire/90 text-white font-semibold text-sm sm:text-base shadow-lg shadow-brand-fire/30 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2">
+          <span>Comenzar el resumen</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </a>
+        <a href="#personajes"
+          class="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-brand-surface/90 hover:bg-brand-surfaceAlt border border-brand-gold/40 text-brand-text font-semibold text-sm sm:text-base transition-all hover:-translate-y-0.5">
+          Ver personajes
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 space-y-24 sm:space-y-32 pb-24">
+
+    <!-- 3. INTRODUCCIÓN AL LIBRO -->
+    <section id="introduccion" class="reveal-on-scroll pt-8">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="text-xs font-bold uppercase tracking-widest text-brand-gold">Ficha Literaria y Contexto</span>
+        <h2 class="font-display text-3xl sm:text-4xl font-bold mt-2">El mundo de Panem</h2>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+        <!-- Tarjeta de datos extraídos del texto + contadores -->
+        <div class="lg:col-span-5 rounded-3xl bg-brand-surface border border-brand-border p-6 sm:p-8 flex flex-col justify-between shadow-xl print-card">
+          <div>
+            <h3 class="font-display text-xl font-bold text-brand-gold mb-5 flex items-center gap-2">
+              <svg class="w-5 h-5 text-brand-fire" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+              </svg>
+              Datos de la obra
+            </h3>
+
+            <dl class="space-y-3.5 text-sm">
+              <div class="flex justify-between gap-4 border-b border-brand-border/60 pb-2.5">
+                <dt class="text-brand-muted">Autora</dt>
+                <dd class="font-semibold text-right">Suzanne Collins</dd>
+              </div>
+              <div class="flex justify-between gap-4 border-b border-brand-border/60 pb-2.5">
+                <dt class="text-brand-muted">Género</dt>
+                <dd class="font-semibold text-right">Distopía / Aventura</dd>
+              </div>
+              <div class="flex justify-between gap-4 border-b border-brand-border/60 pb-2.5">
+                <dt class="text-brand-muted">Año de publicación</dt>
+                <dd class="font-semibold text-right">2008</dd>
+              </div>
+              <div class="flex justify-between gap-4 border-b border-brand-border/60 pb-2.5">
+                <dt class="text-brand-muted">Ambientación</dt>
+                <dd class="font-semibold text-right">Panem: Distrito 12, Capitolio y la Arena</dd>
+              </div>
+              <div class="flex justify-between gap-4 pb-1">
+                <dt class="text-brand-muted">Estructura analizada</dt>
+                <dd class="font-semibold text-right">Partes I, II y III (hasta Cap. 19)</dd>
+              </div>
+            </dl>
+          </div>
+
+          <!-- Contadores animados -->
+          <div class="grid grid-cols-3 gap-3 mt-8 pt-6 border-t border-brand-border text-center">
+            <div class="p-3 rounded-2xl bg-brand-surfaceAlt">
+              <span class="counter block font-display text-2xl sm:text-3xl font-extrabold text-brand-fire" data-target="12">0</span>
+              <span class="text-[11px] sm:text-xs text-brand-muted leading-tight block mt-1">Distritos activos</span>
+            </div>
+            <div class="p-3 rounded-2xl bg-brand-surfaceAlt">
+              <span class="counter block font-display text-2xl sm:text-3xl font-extrabold text-brand-gold" data-target="24">0</span>
+              <span class="text-[11px] sm:text-xs text-brand-muted leading-tight block mt-1">Tributos</span>
+            </div>
+            <div class="p-3 rounded-2xl bg-brand-surfaceAlt">
+              <span class="counter block font-display text-2xl sm:text-3xl font-extrabold text-brand-text" data-target="19">0</span>
+              <span class="text-[11px] sm:text-xs text-brand-muted leading-tight block mt-1">Capítulos analizados</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sinopsis original + Ilustración SVG del tren hacia el Capitolio -->
+        <div class="lg:col-span-7 rounded-3xl bg-brand-surface border border-brand-border p-6 sm:p-8 flex flex-col justify-between shadow-xl print-card">
+          <div class="space-y-4 text-sm sm:text-base text-brand-muted leading-relaxed">
+            <h3 class="font-display text-xl font-bold text-brand-text">Sinopsis del fragmento (Capítulos 1 – 19)</h3>
+            <p>
+              En las ruinas de lo que una vez fue Norteamérica se alza <strong class="text-brand-text">Panem</strong>, una nación gobernada con puño de hierro por el opulento Capitolio y rodeada por doce distritos sometidos. Cada año, como recordatorio de la rebelión sofocada y la destrucción del Distrito 13, el régimen celebra <strong class="text-brand-text">Los Juegos del Hambre</strong>: un evento televisado donde un chico y una chica de cada distrito son elegidos por sorteo para luchar a muerte en una arena al aire libre hasta que solo quede un vencedor.
+            </p>
+            <p>
+              En el empobrecido <strong class="text-brand-text">Distrito 12</strong>, Katniss Everdeen, de dieciséis años, mantiene a su familia cazando ilegalmente en los bosques junto a su amigo Gale. Sin embargo, el día de la septuagésima cuarta Cosecha, el nombre de su pequeña hermana Primrose sale de la urna. Sin dudarlo, Katniss se ofrece como voluntaria para ocupar su lugar, embarcándose hacia el Capitolio junto a Peeta Mellark, el hijo del panadero que años atrás le salvó la vida con un pedazo de pan.
+            </p>
+            <p>
+              Tras una preparación mediática donde su estilista Cinna la convierte en <em>«la chica que estaba en llamas»</em> y Peeta confiesa en televisión su amor por ella, ambos ingresan en la Arena. Allí, Katniss deberá valerse de su ingenio, su arco y una entrañable alianza con la pequeña Rue del Distrito 11 para sobrevivir a los tributos profesionales y a las trampas de los Vigilantes, hasta que un inesperado cambio en las reglas le abre una nueva esperanza.
+            </p>
+          </div>
+
+          <!-- Ilustración SVG animada del tren de alta velocidad -->
+          <div class="mt-6 pt-5 border-t border-brand-border/60">
+            <div class="flex items-center justify-between text-xs text-brand-muted mb-2">
+              <span class="font-semibold text-brand-gold uppercase tracking-wider">Ruta: Distrito 12 → Capitolio</span>
+              <span>Tren de alta velocidad</span>
+            </div>
+            <div class="relative w-full h-24 rounded-2xl bg-brand-bg/90 border border-brand-border overflow-hidden flex items-center">
+              <!-- Montañas de fondo -->
+              <svg class="absolute inset-0 w-full h-full opacity-35" viewBox="0 0 600 100" preserveAspectRatio="none">
+                <polygon points="0,100 80,35 170,100" fill="var(--accent-forest)" />
+                <polygon points="130,100 240,20 350,100" fill="var(--accent-forest)" />
+                <polygon points="310,100 430,30 550,100" fill="var(--accent-forest)" />
+                <polygon points="480,100 560,40 600,100" fill="var(--accent-gold)" fill-opacity="0.3" />
+              </svg>
+              <!-- Vía férrea -->
+              <div class="absolute bottom-4 left-0 w-full h-0.5 bg-brand-gold/50"></div>
+              <!-- Tren SVG animado -->
+              <div class="animate-train relative z-10 w-52">
+                <svg viewBox="0 0 260 55" class="w-full h-auto drop-shadow-[0_0_10px_rgba(212,160,23,0.45)]">
+                  <!-- Estela de velocidad -->
+                  <line x1="0" y1="22" x2="35" y2="22" stroke="#D7263D" stroke-width="2" stroke-linecap="round"/>
+                  <line x1="10" y1="32" x2="42" y2="32" stroke="#D4A017" stroke-width="1.5" stroke-linecap="round"/>
+                  <!-- Vagón trasero -->
+                  <rect x="42" y="14" width="85" height="26" rx="5" fill="#2A2A32" stroke="#D4A017" stroke-width="1.4"/>
+                  <rect x="52" y="20" width="14" height="8" rx="2" fill="#F5F1E6" fill-opacity="0.85"/>
+                  <rect x="74" y="20" width="14" height="8" rx="2" fill="#F5F1E6" fill-opacity="0.85"/>
+                  <rect x="96" y="20" width="14" height="8" rx="2" fill="#F5F1E6" fill-opacity="0.85"/>
+                  <!-- Acople -->
+                  <rect x="127" y="25" width="8" height="5" fill="#D4A017"/>
+                  <!-- Locomotora aerodinámica -->
+                  <path d="M135 14 H215 C235 14, 250 28, 254 40 H135 Z" fill="#1C1C22" stroke="#D4A017" stroke-width="1.5"/>
+                  <!-- Franja roja fuego -->
+                  <path d="M42 34 H251 L253 38 H42 Z" fill="#D7263D"/>
+                  <!-- Ventana cabina -->
+                  <path d="M205 19 H223 C232 19, 239 25, 241 29 H205 Z" fill="#D4A017" fill-opacity="0.85"/>
+                  <rect x="148" y="20" width="18" height="8" rx="2" fill="#F5F1E6" fill-opacity="0.85"/>
+                  <rect x="174" y="20" width="18" height="8" rx="2" fill="#F5F1E6" fill-opacity="0.85"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. RESUMEN INTERACTIVO POR ETAPAS -->
+    <section id="resumen" class="reveal-on-scroll">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest text-brand-gold">Estructura Narrativa</span>
+          <h2 class="font-display text-3xl sm:text-4xl font-bold mt-2">Resumen interactivo por etapas</h2>
+        </div>
+
+        <!-- Indicador de avance de lectura de etapas -->
+        <div class="bg-brand-surface border border-brand-border rounded-2xl px-4 py-3 flex items-center gap-4 min-w-[260px]">
+          <div class="flex-1">
+            <div class="flex justify-between text-xs font-semibold mb-1.5">
+              <span class="text-brand-muted">Progreso de etapas</span>
+              <span id="stage-progress-text" class="text-brand-gold">1 / 3 exploradas</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-brand-bg overflow-hidden">
+              <div id="stage-progress-bar" class="h-full bg-gradient-to-r from-brand-fire to-brand-gold w-1/3 transition-all duration-500"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pestañas de las 3 partes -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8" role="tablist">
+        <button type="button" data-stage="0" class="stage-tab active text-left p-4 rounded-2xl border-2 border-brand-fire bg-brand-surface transition-all shadow-md">
+          <span class="text-xs font-bold uppercase tracking-wider text-brand-fire block">Capítulos 1 – 9</span>
+          <span class="font-display font-bold text-base sm:text-lg text-brand-text mt-0.5 block">Primera Parte: Los Tributos</span>
+        </button>
+
+        <button type="button" data-stage="1" class="stage-tab text-left p-4 rounded-2xl border border-brand-border bg-brand-surface/60 hover:bg-brand-surface transition-all">
+          <span class="text-xs font-bold uppercase tracking-wider text-brand-gold block">Capítulos 10 – 18</span>
+          <span class="font-display font-bold text-base sm:text-lg text-brand-text mt-0.5 block">Segunda Parte: Los Juegos</span>
+        </button>
+
+        <button type="button" data-stage="2" class="stage-tab text-left p-4 rounded-2xl border border-brand-border bg-brand-surface/60 hover:bg-brand-surface transition-all">
+          <span class="text-xs font-bold uppercase tracking-wider text-brand-gold block">Capítulo 19 (inicio)</span>
+          <span class="font-display font-bold text-base sm:text-lg text-brand-text mt-0.5 block">Tercera Parte: El Vencedor</span>
+        </button>
+      </div>
+
+      <!-- Contenedor dinámico de tarjetas y acordeones de la etapa activa -->
+      <div id="stage-content" class="space-y-4"></div>
+    </section>
+
+    <!-- 5. PERSONAJES PRINCIPALES -->
+    <section id="personajes" class="reveal-on-scroll">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="text-xs font-bold uppercase tracking-widest text-brand-gold">Protagonistas y Figuras Clave</span>
+        <h2 class="font-display text-3xl sm:text-4xl font-bold mt-2">Personajes principales</h2>
+        <p class="text-sm text-brand-muted mt-2">Pulsa o pasa el cursor sobre cada tarjeta para desplegar su papel en los capítulos 1 al 19.</p>
+      </div>
+
+      <div id="characters-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Generado vía JS con avatares vectoriales SVG abstractos -->
+      </div>
+    </section>
+
+    <!-- 6. TEMAS CENTRALES -->
+    <section id="temas" class="reveal-on-scroll">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="text-xs font-bold uppercase tracking-widest text-brand-gold">Ejes Narrativos</span>
+        <h2 class="font-display text-3xl sm:text-4xl font-bold mt-2">Temas centrales</h2>
+      </div>
+
+      <div id="themes-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- Generado vía JS con iconos SVG y microinteracciones -->
+      </div>
+    </section>
+
+    <!-- 7. LÍNEA DE TIEMPO DE LA HISTORIA -->
+    <section id="linea-tiempo" class="reveal-on-scroll">
+      <div class="text-center max-w-2xl mx-auto mb-14">
+        <span class="text-xs font-bold uppercase tracking-widest text-brand-gold">Cronología del Fragmento</span>
+        <h2 class="font-display text-3xl sm:text-4xl font-bold mt-2">Línea de tiempo de la historia</h2>
+        <p class="text-sm text-brand-muted mt-2">Haz clic en cada hito para desplegar los detalles clave ocurridos en la narración.</p>
+      </div>
+
+      <div class="relative max-w-4xl mx-auto" id="timeline-wrapper">
+        <!-- Línea vertical base -->
+        <div class="absolute left-5 sm:left-1/2 top-0 bottom-0 w-0.5 bg-brand-border -translate-x-1/2"></div>
+        <!-- Línea vertical animada que se dibuja al hacer scroll -->
+        <div id="timeline-fill" class="absolute left-5 sm:left-1/2 top-0 w-0.5 bg-gradient-to-b from-brand-fire via-brand-gold to-brand-fire -translate-x-1/2 h-0 transition-all duration-200"></div>
+
+        <div id="timeline-items" class="space-y-8">
+          <!-- Hitos cronológicos generados por JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. SECCIÓN DE CURIOSIDADES Y SÍMBOLOS -->
+    <section id="curiosidades" class="reveal-on-scroll">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="text-xs font-bold uppercase tracking-widest text-brand-gold">Simbología de Panem</span>
+        <h2 class="font-display text-3xl sm:text-4xl font-bold mt-2">Curiosidades y símbolos</h2>
+        <p class="text-sm text-brand-muted mt-2">Toca cada tarjeta para voltearla y descubrir su significado en la historia.</p>
+      </div>
+
+      <div id="symbols-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Tarjetas Flip 3D generadas por JS -->
+      </div>
+
+      <!-- Nota aclaratoria sutil solicitada -->
+      <p class="mt-8 text-center text-xs text-brand-muted/85 italic max-w-2xl mx-auto bg-brand-surface/60 border border-brand-border/50 rounded-xl px-4 py-3">
+        Nota: Este recorrido abarca exclusivamente los símbolos y acontecimientos presentes desde el Capítulo 1 hasta el inicio del Capítulo 19; otros elementos posteriores del libro completo no forman parte de este fragmento del PDF.
+      </p>
+    </section>
+
+    <!-- 9. SECCIÓN DE REFLEXIÓN -->
+    <section id="reflexion" class="reveal-on-scroll">
+      <div class="rounded-3xl bg-brand-surface border border-brand-border p-6 sm:p-10 shadow-2xl print-card">
+        <div class="max-w-2xl mb-8">
+          <span class="text-xs font-bold uppercase tracking-widest text-brand-fire">Tu perspectiva como lector</span>
+          <h2 class="font-display text-3xl sm:text-4xl font-bold mt-2">Dilemas y reflexión</h2>
+          <p class="text-sm text-brand-muted mt-2">
+            Explora los conflictos morales que enfrenta Katniss en estos diecinueve capítulos. Tus respuestas se guardan automáticamente en tu navegador.
+          </p>
+        </div>
+
+        <form id="reflection-form" class="space-y-8">
+          <!-- Pregunta 1 -->
+          <div class="p-5 rounded-2xl bg-brand-surfaceAlt/60 border border-brand-border/60 space-y-3">
+            <h3 class="font-semibold text-base sm:text-lg text-brand-text">
+              1. El sacrificio por la familia: ¿Qué te lleva a pensar el paso al frente de Katniss para reemplazar a Prim en la Cosecha?
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-sm">
+              <label class="cursor-pointer flex items-start gap-2.5 p-3 rounded-xl border border-brand-border hover:border-brand-gold bg-brand-surface transition-colors">
+                <input type="radio" name="q1" value="El amor familiar supera cualquier instinto de autopreservación." class="mt-1 accent-[#D7263D]" />
+                <span>El amor familiar supera cualquier instinto de autopreservación.</span>
+              </label>
+              <label class="cursor-pointer flex items-start gap-2.5 p-3 rounded-xl border border-brand-border hover:border-brand-gold bg-brand-surface transition-colors">
+                <input type="radio" name="q1" value="Es el primer acto involuntario de desafío contra la crueldad del Capitolio." class="mt-1 accent-[#D7263D]" />
+                <span>Es el primer acto involuntario de desafío contra la crueldad del Capitolio.</span>
+              </label>
+              <label class="cursor-pointer flex items-start gap-2.5 p-3 rounded-xl border border-brand-border hover:border-brand-gold bg-brand-surface transition-colors">
+                <input type="radio" name="q1" value="Refleja la responsabilidad que Katniss asumió desde la muerte de su padre." class="mt-1 accent-[#D7263D]" />
+                <span>Refleja la responsabilidad que Katniss asumió desde la muerte de su padre.</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Pregunta 2 -->
+          <div class="p-5 rounded-2xl bg-brand-surfaceAlt/60 border border-brand-border/60 space-y-3">
+            <h3 class="font-semibold text-base sm:text-lg text-brand-text">
+              2. Identidad frente al espectáculo: Peeta afirma que no quiere que el Capitolio lo cambie ni lo convierta en un monstruo. ¿Cómo influye la mirada de las cámaras en los tributos?
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-sm">
+              <label class="cursor-pointer flex items-start gap-2.5 p-3 rounded-xl border border-brand-border hover:border-brand-gold bg-brand-surface transition-colors">
+                <input type="radio" name="q2" value="Les obliga a actuar un personaje para conseguir patrocinadores y sobrevivir." class="mt-1 accent-[#D7263D]" />
+                <span>Les obliga a actuar un personaje para conseguir patrocinadores y sobrevivir.</span>
+              </label>
+              <label class="cursor-pointer flex items-start gap-2.5 p-3 rounded-xl border border-brand-border hover:border-brand-gold bg-brand-surface transition-colors">
+                <input type="radio" name="q2" value="Intenta despojarlos de su dignidad humana para entretener a la audiencia." class="mt-1 accent-[#D7263D]" />
+                <span>Intenta despojarlos de su dignidad humana para entretener a la audiencia.</span>
+              </label>
+              <label class="cursor-pointer flex items-start gap-2.5 p-3 rounded-xl border border-brand-border hover:border-brand-gold bg-brand-surface transition-colors">
+                <input type="radio" name="q2" value="Permite usar las propias reglas del espectáculo como arma estratégica." class="mt-1 accent-[#D7263D]" />
+                <span>Permite usar las propias reglas del espectáculo como arma estratégica.</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Pregunta 3 -->
+          <div class="p-5 rounded-2xl bg-brand-surfaceAlt/60 border border-brand-border/60 space-y-3">
+            <h3 class="font-semibold text-base sm:text-lg text-brand-text">
+              3. Alianza y compasión en un entorno hostil: ¿Qué significado tiene la unión entre Katniss y Rue, y el homenaje con flores tras su muerte?
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-sm">
+              <label class="cursor-pointer flex items-start gap-2.5 p-3 rounded-xl border border-brand-border hover:border-brand-gold bg-brand-surface transition-colors">
+                <input type="radio" name="q3" value="Demuestra que la empatía puede florecer incluso dentro de la Arena." class="mt-1 accent-[#D7263D]" />
+                <span>Demuestra que la empatía puede florecer incluso dentro de la Arena.</span>
+              </label>
+              <label class="cursor-pointer flex items-start gap-2.5 p-3 rounded-xl border border-brand-border hover:border-brand-gold bg-brand-surface transition-colors">
+                <input type="radio" name="q3" value="Señala al Capitolio como el verdadero responsable de cada muerte." class="mt-1 accent-[#D7263D]" />
+                <span>Señala al Capitolio como el verdadero responsable de cada muerte.</span>
+              </label>
+              <label class="cursor-pointer flex items-start gap-2.5 p-3 rounded-xl border border-brand-border hover:border-brand-gold bg-brand-surface transition-colors">
+                <input type="radio" name="q3" value="Une simbólicamente a los distritos oprimidos frente a una pérdida común." class="mt-1 accent-[#D7263D]" />
+                <span>Une simbólicamente a los distritos oprimidos frente a una pérdida común.</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Reflexión libre -->
+          <div class="space-y-2">
+            <label for="personal-note" class="block text-sm font-semibold text-brand-gold">
+              Tu reflexión personal (opcional)
+            </label>
+            <textarea id="personal-note" rows="3" placeholder="Escribe aquí tus pensamientos sobre la historia de Katniss, Peeta, Rue o la sociedad de Panem..."
+              class="w-full rounded-2xl bg-brand-bg border border-brand-border focus:border-brand-gold focus:outline-none p-4 text-sm text-brand-text placeholder:text-brand-muted/50"></textarea>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <button type="submit"
+              class="px-6 py-3 rounded-2xl bg-brand-fire hover:bg-brand-fire/90 text-white font-semibold text-sm shadow-lg shadow-brand-fire/25 transition-all">
+              Guardar mi reflexión
+            </button>
+
+            <div id="save-confirmation" class="hidden items-center gap-2 text-sm font-medium text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 px-4 py-2 rounded-xl">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span>Reflexión guardada localmente con éxito.</span>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- 10. LLAMADA FINAL -->
+    <section class="reveal-on-scroll text-center rounded-3xl bg-gradient-to-br from-brand-surface via-brand-surfaceAlt to-brand-surface border border-brand-gold/30 p-8 sm:p-14 shadow-2xl">
+      <span class="inline-block px-3.5 py-1 rounded-full bg-brand-fire/15 text-brand-fire text-xs font-bold uppercase tracking-widest mb-4">
+        Fin del recorrido (Cap. 1 – Inicio Cap. 19)
+      </span>
+      <h2 class="font-display text-3xl sm:text-5xl font-bold text-brand-text max-w-2xl mx-auto">
+        Explora el resumen completo
+      </h2>
+      <p class="text-sm sm:text-base text-brand-muted max-w-xl mx-auto mt-4 leading-relaxed">
+        Descarga una copia limpia en texto plano con todos los hitos, personajes y tus reflexiones guardadas, o imprime esta guía interactiva.
+      </p>
+
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 no-print">
+        <button id="download-txt-btn" type="button"
+          class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-brand-gold hover:bg-brand-gold/90 text-neutral-950 font-bold text-sm shadow-lg transition-all flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          <span>Descargar resumen en texto</span>
+        </button>
+
+        <button id="print-btn" type="button"
+          class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-brand-surface border border-brand-border hover:border-brand-gold text-brand-text font-semibold text-sm transition-all flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+          </svg>
+          <span>Versión para impresión</span>
+        </button>
+
+        <a href="#hero"
+          class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-brand-fire/15 hover:bg-brand-fire/25 text-brand-fire font-semibold text-sm transition-all flex items-center justify-center gap-2">
+          <span>Volver al inicio</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+          </svg>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-brand-border bg-brand-surface/70 py-8 px-4 text-center text-xs text-brand-muted">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p>
+        <strong class="text-brand-text">Los Juegos del Hambre: Resumen interactivo</strong> · Basado en la obra de Suzanne Collins (Capítulos 1 al inicio del 19).
+      </p>
+      <p class="text-brand-gold/80">
+        «Que la suerte esté siempre de vuestra parte»
+      </p>
+    </div>
+  </footer>
+
+  <!-- LÓGICA INTERACTIVA EN JAVASCRIPT -->
+  <script>
+    // =========================================================================
+    // 1. DATOS ESTRICTAMENTE BASADOS EN LOS CAPÍTULOS 1 AL INICIO DEL 19
+    // =========================================================================
+
+    const STAGES_DATA = [
+      {
+        title: "Primera Parte: Los Tributos",
+        chapters: "Capítulos 1 – 9",
+        summary: "La vida en la Veta del Distrito 12, el sacrificio de Katniss durante la Cosecha y la preparación mediática en el Capitolio antes de entrar en la Arena.",
+        moments: [
+          {
+            title: "Caza furtiva y el día de la Cosecha (Caps. 1–2)",
+            icon: "bow",
+            brief: "Katniss caza fuera de la alambrada con Gale y se ofrece voluntaria para salvar a su hermana Prim.",
+            detail: "En el empobrecido Distrito 12, Katniss alimenta a su madre y a su hermana Primrose cazando en el bosque prohibido. Durante la ceremonia anual de la Cosecha, Effie Trinket extrae el nombre de Prim. Katniss ocupa su lugar como tributo femenina; el tributo masculino resulta ser Peeta Mellark, quien años atrás le arrojó dos hogazas de pan quemado bajo la lluvia."
+          },
+          {
+            title: "El viaje en tren y Haymitch Abernathy (Caps. 3–4)",
+            icon: "train",
+            brief: "Despedidas en el edificio de Justicia y viaje de alta velocidad hacia el Capitolio.",
+            detail: "Tras despedirse de su familia, de Gale y recibir el broche del sinsajo de Madge, Katniss y Peeta abordan un tren lujoso. Allí conocen a su mentor, Haymitch Abernathy, el único vencedor vivo del Distrito 12, quien inicialmente se muestra ebrio y cínico hasta comprobar la determinación de ambos jóvenes."
+          },
+          {
+            title: "El desfile inaugural en llamas (Caps. 5–6)",
+            icon: "fire",
+            brief: "Cinna diseña trajes encendidos con fuego sintético que deslumbran al Capitolio.",
+            detail: "A diferencia de los habituales disfraces de mineros, el estilista Cinna y su compañera Portia visten a Katniss y Peeta con monos negros que arden con llamas inofensivas mientras avanzan tomados de la mano en su carroza. Katniss se gana de inmediato el apodo de «la chica que estaba en llamas»."
+          },
+          {
+            title: "Entrenamiento, puntuación y confesión (Caps. 7–9)",
+            icon: "bow",
+            brief: "Katniss obtiene un 11 tras disparar a la manzana de los Vigilantes y Peeta confiesa su amor.",
+            detail: "Durante el entrenamiento privado, irritada porque los Vigilantes la ignoran para mirar un cerdo asado, Katniss dispara una flecha que atraviesa la manzana en la boca del animal, obteniendo una puntuación sobresaliente de 11. Luego, en la entrevista televisiva con Caesar Flickerman, Peeta confiesa estar enamorado de Katniss, convirtiéndolos en «los trágicos amantes del Distrito 12»."
+          }
+        ]
+      },
+      {
+        title: "Segunda Parte: Los Juegos",
+        chapters: "Capítulos 10 – 18",
+        summary: "La supervivencia en la Arena: el baño de sangre inicial, el ataque de las rastrevíspulas, la alianza con Rue y su dolorosa despedida.",
+        moments: [
+          {
+            title: "La Cornucopia y la búsqueda de agua (Caps. 10–12)",
+            icon: "bow",
+            brief: "Katniss huye con una mochila naranja y descubre que Peeta se ha aliado con los Profesionales.",
+            detail: "Al sonar el gong, once tributos mueren en el baño de sangre inicial. Katniss logra escapar con una mochila y un plástico, internándose en el bosque. Tras días al borde de la deshidratación, halla un estanque y descubre con estupor que Peeta camina junto a la alianza de los tributos profesionales."
+          },
+          {
+            title: "El muro de fuego y las rastrevíspulas (Caps. 13–14)",
+            icon: "wasp",
+            brief: "Los Vigilantes dirigen a Katniss hacia sus perseguidores; Rue le señala un avispero mutado.",
+            detail: "Acorralada en un árbol por los Profesionales y Peeta, Katniss sigue la discreta señal de la pequeña Rue (Distrito 11) y sierra la rama de un nido de rastrevíspulas, avispas mutadas cuyo veneno provoca alucinaciones letales. El ataque dispersa al grupo, mata a Glimmer y permite a Katniss obtener el arco y las flechas."
+          },
+          {
+            title: "La alianza con Rue y los suministros (Caps. 15–16)",
+            icon: "flower",
+            brief: "Katniss y Rue unen fuerzas y destruyen las provisiones de los Profesionales.",
+            detail: "Recuperada de las picaduras, Katniss forma una alianza con Rue, quien le enseña a usar los sinsajos para transmitir señales musicales y le cura las heridas con hojas medicinales. Juntas idean un plan para destruir la pirámide de suministros de los Profesionales detonando las minas enterradas alrededor."
+          },
+          {
+            title: "La muerte de Rue y el cambio de reglas (Caps. 17–18)",
+            icon: "flower",
+            brief: "Katniss cubre el cuerpo de Rue con flores silvestres y recibe pan del Distrito 11.",
+            detail: "Al acudir al llamado de auxilio de Rue, Katniss llega justo cuando el tributo del Distrito 1 le clava una lanza; Katniss lo abate con una flecha. Canta para Rue hasta su último aliento y cubre su cuerpo con flores silvestres en señal de respeto, recibiendo luego un pan enviado por el Distrito 11. Poco después, Claudius Templesmith anuncia un cambio de reglas: podrán ganar dos tributos si pertenecen al mismo distrito."
+          }
+        ]
+      },
+      {
+        title: "Tercera Parte: El Vencedor",
+        chapters: "Capítulo 19 (inicio)",
+        summary: "La búsqueda desesperada de Peeta tras el anuncio del cambio de reglas y su hallazgo herido junto al arroyo.",
+        moments: [
+          {
+            title: "El reencuentro en el arroyo (Cap. 19 - inicio)",
+            icon: "stream",
+            brief: "Katniss sigue el rastro de sangre y encuentra a Peeta maestro en camuflaje.",
+            detail: "Con la esperanza encendida por la nueva regla que permitiría regresar juntos al Distrito 12, Katniss recuerda que Peeta fue herido por Cato al defenderla durante el ataque de las rastrevíspulas. Siguiendo un rastro de sangre junto a un arroyo, escucha su voz y lo descubre oculto bajo una capa perfecta de barro, musgo y corteza, gravemente herido en una pierna pero con vida."
+          }
+        ]
+      }
+    ];
+
+    const CHARACTERS_DATA = [
+      {
+        name: "Katniss Everdeen",
+        district: "Distrito 12",
+        role: "Protagonista y tributo voluntaria",
+        traits: ["Protectora", "Cazadora experta", "Desconfiada", "Resiliente"],
+        idea: "Se ofrece como voluntaria para salvar a su hermana Prim y usa su dominio del arco y su astucia para sobrevivir en la Arena.",
+        svgShape: `<circle cx="40" cy="40" r="26" fill="none" stroke="#D7263D" stroke-width="2"/><path d="M24 54 C24 34, 46 22, 58 24" fill="none" stroke="#D4A017" stroke-width="2.5" stroke-linecap="round"/><line x1="22" y1="56" x2="60" y2="22" stroke="#F5F1E6" stroke-width="2"/><polygon points="60,22 52,23 58,30" fill="#F5F1E6"/>`
+      },
+      {
+        name: "Peeta Mellark",
+        district: "Distrito 12",
+        role: "Tributo masculino e hijo del panadero",
+        traits: ["Empático", "Carismático", "Estratega", "Leal"],
+        idea: "Salvó a Katniss del hambre años atrás con un pan, confiesa su amor por ella ante el Capitolio y sobrevive herido gracias a su habilidad para el camuflaje.",
+        svgShape: `<circle cx="40" cy="40" r="26" fill="none" stroke="#D4A017" stroke-width="2"/><path d="M22 46 Q40 24 58 46 Z" fill="#D4A017" fill-opacity="0.3" stroke="#D4A017" stroke-width="2"/><line x1="33" y1="36" x2="36" y2="41" stroke="#F5F1E6" stroke-width="1.8"/><line x1="44" y1="36" x2="47" y2="41" stroke="#F5F1E6" stroke-width="1.8"/>`
+      },
+      {
+        name: "Gale Hawthorne",
+        district: "Distrito 12",
+        role: "Compañero de caza y mejor amigo",
+        traits: ["Rebelde", "Ingenioso", "Protector", "Crítico del Capitolio"],
+        idea: "Caza junto a Katniss en los bosques del Distrito 12 y promete cuidar de Prim y de su madre mientras Katniss está en los Juegos.",
+        svgShape: `<circle cx="40" cy="40" r="26" fill="none" stroke="#2F4F3A" stroke-width="2.5"/><path d="M26 52 L40 24 L54 52 Z" fill="#2F4F3A" fill-opacity="0.45" stroke="#F5F1E6" stroke-width="1.8"/><line x1="40" y1="34" x2="40" y2="56" stroke="#D4A017" stroke-width="2"/>`
+      },
+      {
+        name: "Primrose Everdeen",
+        district: "Distrito 12",
+        role: "Hermana menor de Katniss",
+        traits: ["Compasiva", "Curandera", "Inocente", "Sensible"],
+        idea: "Su nombre es elegido en su primera Cosecha a los doce años, lo que desencadena el sacrificio voluntario de Katniss.",
+        svgShape: `<circle cx="40" cy="40" r="26" fill="none" stroke="#D4A017" stroke-width="1.8"/><circle cx="40" cy="40" r="6" fill="#D4A017"/><path d="M40 22 V30 M40 50 V58 M22 40 H30 M50 40 H58" stroke="#F5F1E6" stroke-width="2" stroke-linecap="round"/>`
+      },
+      {
+        name: "Haymitch Abernathy",
+        district: "Distrito 12",
+        role: "Mentor y antiguo vencedor",
+        traits: ["Cínico", "Astuto", "Experimentado", "Pragmático"],
+        idea: "Único vencedor vivo del Distrito 12; asesora a Katniss y Peeta y gestiona los envíos cruciales de patrocinadores en la Arena.",
+        svgShape: `<circle cx="40" cy="40" r="26" fill="none" stroke="#A9A498" stroke-width="2"/><path d="M28 28 H52 L46 42 H34 Z" fill="none" stroke="#D4A017" stroke-width="2"/><line x1="40" y1="42" x2="40" y2="54" stroke="#D4A017" stroke-width="2"/><line x1="32" y1="54" x2="48" y2="54" stroke="#D4A017" stroke-width="2"/>`
+      },
+      {
+        name: "Effie Trinket",
+        district: "Capitolio",
+        role: "Escolta de los tributos del Distrito 12",
+        traits: ["Extravagante", "Superficial", "Puntual", "Ambiciosa"],
+        idea: "Dirige el sorteo de la Cosecha en el Distrito 12 y acompaña a Katniss y Peeta buscando mejorar su propia posición en el Capitolio.",
+        svgShape: `<circle cx="40" cy="40" r="26" fill="none" stroke="#D7263D" stroke-width="1.8"/><polygon points="40,22 52,40 40,58 28,40" fill="#D7263D" fill-opacity="0.25" stroke="#F5F1E6" stroke-width="1.8"/>`
+      },
+      {
+        name: "Cinna",
+        district: "Capitolio",
+        role: "Estilista principal de Katniss",
+        traits: ["Visionario", "Sereno", "Audaz", "Solidario"],
+        idea: "Rechaza los disfraces ridículos y crea el atuendo de llamas que convierte a Katniss en un fenómeno inolvidable en el Capitolio.",
+        svgShape: `<circle cx="40" cy="40" r="26" fill="none" stroke="#D7263D" stroke-width="2"/><path d="M40 20 C48 32, 52 42, 40 56 C28 42, 32 32, 40 20 Z" fill="#D7263D" fill-opacity="0.4" stroke="#D4A017" stroke-width="2"/>`
+      },
+      {
+        name: "Rue",
+        district: "Distrito 11",
+        role: "Tributo joven y aliada de Katniss",
+        traits: ["Ágil", "Observadora", "Musical", "Generosa"],
+        idea: "Advierte a Katniss sobre las rastrevíspulas, se convierte en su aliada y tras morir recibe un emotivo homenaje con flores silvestres.",
+        svgShape: `<circle cx="40" cy="40" r="26" fill="none" stroke="#2F4F3A" stroke-width="2"/><path d="M26 44 C34 30, 48 28, 56 36 C48 44, 38 48, 26 44 Z" fill="#D4A017" fill-opacity="0.45" stroke="#F5F1E6" stroke-width="1.8"/>`
+      },
+      {
+        name: "Presidente Snow",
+        district: "Capitolio",
+        role: "Líder supremo de Panem",
+        traits: ["Autoritario", "Imponente", "Solemnemente frío"],
+        idea: "En el fragmento analizado aparece dando la bienvenida oficial a los tributos desde el balcón de su mansión tras el desfile inaugural.",
+        svgShape: `<circle cx="40" cy="40" r="26" fill="none" stroke="#F5F1E6" stroke-width="1.8"/><polygon points="26,48 31,30 40,38 49,30 54,48" fill="none" stroke="#D4A017" stroke-width="2"/>`
+      }
+    ];
+
+    const THEMES_DATA = [
+      {
+        title: "Poder y control",
+        desc: "El Capitolio vigila cada rincón de los distritos y convierte la Arena en un tablero absoluto donde decide el clima, el fuego y la muerte.",
+        icon: `<circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>`
+      },
+      {
+        title: "Desigualdad",
+        desc: "Mientras el Capitolio derrocha banquetes y lujos extremos, los habitantes de la Veta arriesgan sus vidas por raciones mínimas.",
+        icon: `<path d="M3 18h18M5 18l2-10 5 5 5-5 2 10"/>`
+      },
+      {
+        title: "Hambre",
+        desc: "La escasez de alimento define la vida cotidiana en el Distrito 12 y convierte al pan en un símbolo vital de memoria y gratitud.",
+        icon: `<path d="M4 15c0-4.5 3.6-8 8-8s8 3.5 8 8v2H4v-2z"/><path d="M9 11l1 2M14 11l1 2"/>`
+      },
+      {
+        title: "Supervivencia",
+        desc: "Los conocimientos del bosque, la caza con arco, la búsqueda de agua y la curación con plantas permiten a Katniss resistir.",
+        icon: `<path d="M5 19L19 5M19 5h-6M19 5v6"/><path d="M4 11c2.5-5 9-7 15-6 1 6-1 12.5-6 15"/>`
+      },
+      {
+        title: "Violencia como espectáculo",
+        desc: "Los Juegos del Hambre transforman el sufrimiento juvenil en entretenimiento obligatorio con entrevistas, apuestas y patrocinadores.",
+        icon: `<rect x="2" y="7" width="15" height="10" rx="2"/><polygon points="17 10 22 7 22 17 17 14"/>`
+      },
+      {
+        title: "Identidad",
+        desc: "Katniss y Peeta deben equilibrar la imagen pública creada por sus estilistas con su deseo de conservar su propia humanidad.",
+        icon: `<path d="M12 2c3 4 6 7 6 11a6 6 0 1 1-12 0c0-4 3-7 6-11z"/>`
+      },
+      {
+        title: "Resistencia",
+        desc: "Pequeños gestos —el saludo de tres dedos, el broche del sinsajo, las flores sobre Rue— siembran una chispa de rebeldía silenciosa.",
+        icon: `<path d="M9 11V6a1.5 1.5 0 0 1 3 0v5m0-4V5a1.5 1.5 0 0 1 3 0v6m0-3V6.5a1.5 1.5 0 0 1 3 0V14a6 6 0 0 1-6 6h-2a6 6 0 0 1-5-2.7L5 14"/>`
+      },
+      {
+        title: "Humanidad",
+        desc: "Incluso en un sistema diseñado para enfrentar a los tributos entre sí, la compasión entre Katniss y Rue reafirma su dignidad.",
+        icon: `<circle cx="12" cy="12" r="2.5"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3M6.3 6.3l2.1 2.1M15.6 15.6l2.1 2.1M17.7 6.3l-2.1 2.1M8.4 15.6l-2.1 2.1"/>`
+      }
+    ];
+
+    const TIMELINE_DATA = [
+      {
+        step: "Hito 01 · Cap. 2",
+        title: "La Cosecha y el voluntariado por Prim",
+        summary: "Katniss ofrece su vida para salvar a su hermana menor.",
+        details: "Cuando Effie Trinket pronuncia el nombre de Primrose Everdeen, Katniss corre hacia el estrado y se ofrece como voluntaria. El Distrito 12 responde con un silencio absoluto y el saludo tradicional de tres dedos."
+      },
+      {
+        step: "Hito 02 · Caps. 3–5",
+        title: "El viaje en tren y el desfile en llamas",
+        summary: "Llegada al Capitolio y triunfo visual diseñado por Cinna.",
+        details: "A bordo del tren de alta velocidad conocen a Haymitch. Ya en el Capitolio, Cinna y Portia encienden los trajes de carbón de Katniss y Peeta durante el desfile inaugural, cautivando a toda la audiencia."
+      },
+      {
+        step: "Hito 03 · Caps. 8–9",
+        title: "Las puntuaciones y la confesión de Peeta",
+        summary: "Un 11 para Katniss y una declaración amorosa en televisión.",
+        details: "Katniss dispara contra la manzana del cerdo asado de los Vigilantes y recibe la nota más alta (11). En la entrevista con Caesar Flickerman, Peeta confiesa su amor por Katniss, ganándose el favor del público."
+      },
+      {
+        step: "Hito 04 · Cap. 11",
+        title: "El baño de sangre en la Cornucopia",
+        summary: "Comienzan los Juegos con once bajas en los primeros minutos.",
+        details: "Desde sus plataformas metálicas, los veinticuatro tributos entran en acción. Katniss evita el centro de la Cornucopia, logra arrebatar una mochila naranja y huye hacia el bosque mientras once tributos perecen."
+      },
+      {
+        step: "Hito 05 · Cap. 14",
+        title: "El ataque de las rastrevíspulas",
+        summary: "Katniss deja caer un avispero mutado sobre los Profesionales.",
+        details: "Siguiendo el aviso silencioso de Rue desde un árbol vecino, Katniss sierra la rama de un nido de rastrevíspulas sobre el campamento de los Profesionales, dispersándolos y recuperando el arco y las flechas."
+      },
+      {
+        step: "Hito 06 · Caps. 15–16",
+        title: "La alianza con Rue y la destrucción de los suministros",
+        summary: "Trabajo en equipo y sabotaje explosivo contra los Profesionales.",
+        details: "Katniss y Rue unen fuerzas, comparten alimentos y utilizan el canto de los sinsajos como código. Mientras Rue enciende hogueras de distracción, Katniss detona las minas alrededor de los suministros enemigos."
+      },
+      {
+        step: "Hito 07 · Cap. 18",
+        title: "La muerte de Rue y el homenaje con flores",
+        summary: "Despedida emotiva y un regalo inesperado del Distrito 11.",
+        details: "Rue cae herida por una lanza y muere en brazos de Katniss tras pedirle que cante. Katniss cubre su cuerpo con flores silvestres para que el Capitolio no pueda borrar su humanidad; el Distrito 11 le envía pan como gratitud."
+      },
+      {
+        step: "Hito 08 · Caps. 18–19",
+        title: "El cambio de reglas y el reencuentro con Peeta camuflado",
+        summary: "Dos tributos del mismo distrito pueden vencer juntos.",
+        details: "Tras anunciarse que dos tributos del mismo distrito pueden ser declarados vencedores, Katniss busca a Peeta y lo halla oculto bajo un extraordinario camuflaje de barro y musgo junto a un arroyo."
+      }
+    ];
+
+    const SYMBOLS_DATA = [
+      {
+        title: "El Sinsajo",
+        tag: "Símbolo de identidad y resistencia",
+        frontDesc: "El broche dorado que Madge entrega a Katniss antes de partir al Capitolio.",
+        backDesc: "Nació del cruce entre los charlajos —aves mutadas creadas por el Capitolio para espiar a los rebeldes— y los sinsontes hembra silvestres. Incapaces de repetir palabras, reproducen melodías humanas completas, convirtiéndose en emblema de aquello que el Capitolio no pudo controlar."
+      },
+      {
+        title: "El Pan",
+        tag: "Supervivencia y solidaridad",
+        frontDesc: "Dos hogazas quemadas bajo la lluvia y un envío inesperado en la Arena.",
+        backDesc: "Representa el vínculo silencioso entre Katniss y Peeta desde que él quemó a propósito dos panes para dárselos cuando la familia Everdeen moría de hambre. Más tarde, el pan enviado por el Distrito 11 tras la muerte de Rue marca un gesto inédito de unión entre distritos."
+      },
+      {
+        title: "El Saludo de tres dedos",
+        tag: "Tradición del Distrito 12",
+        frontDesc: "Besar los tres dedos centrales de la mano izquierda y extenderlos hacia alguien.",
+        backDesc: "Es un antiguo gesto del Distrito 12 utilizado raramente en funerales para expresar gratitud, admiración y despedida hacia alguien querido. Todo el distrito lo dirige a Katniss tras ofrecerse por Prim, y ella lo repite ante las cámaras tras cubrir a Rue con flores."
+      },
+      {
+        title: "«La chica que estaba en llamas»",
+        tag: "Creación estética y estrategia",
+        frontDesc: "El apodo que transforma a la tributo del distrito carbonero en centro de todas las miradas.",
+        backDesc: "Ideado por Cinna y Portia, este concepto reemplaza la humillación de vestir a los tributos como mineros cubiertos de polvo por la fuerza visual del fuego sintético, proyectando a Katniss como una figura poderosa e inolvidable."
+      },
+      {
+        title: "Las Teselas",
+        tag: "Desigualdad estructural",
+        frontDesc: "Raciones anuales de grano y aceite a cambio de multiplicar el riesgo en la Cosecha.",
+        backDesc: "Cada joven a partir de los doce años puede pedir teselas para sí y su familia, pero cada ración añade su nombre una vez más a la urna de la Cosecha. Katniss acumula veinte papeletas a los dieciséis años y Gale cuarenta y dos a los dieciocho, mientras los niños ricos del distrito solo tienen una."
+      }
+    ];
+
+    // =========================================================================
+    // 2. ANIMACIÓN DE BRASAS EN CANVAS (HERO)
+    // =========================================================================
+    (function initEmbers() {
+      const canvas = document.getElementById('ember-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let embers = [];
+      let w, h;
+
+      function resize() {
+        w = canvas.width = canvas.offsetWidth;
+        h = canvas.height = canvas.offsetHeight;
+      }
+
+      class Ember {
+        constructor() {
+          this.reset(true);
+        }
+        reset(initial = false) {
+          this.x = Math.random() * w;
+          this.y = initial ? Math.random() * h : h + 10;
+          this.size = Math.random() * 2.6 + 0.8;
+          this.speedY = Math.random() * 1.1 + 0.35;
+          this.speedX = (Math.random() - 0.5) * 0.6;
+          this.alpha = Math.random() * 0.75 + 0.2;
+          this.isGold = Math.random() > 0.45;
+        }
+        update() {
+          this.y -= this.speedY;
+          this.x += this.speedX + Math.sin(this.y * 0.015) * 0.25;
+          this.alpha -= 0.0012;
+          if (this.y < -10 || this.alpha <= 0) this.reset();
+        }
+        draw() {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, this.alpha);
+          ctx.fillStyle = this.isGold ? '#D4A017' : '#D7263D';
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = this.isGold ? '#D4A017' : '#D7263D';
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      function setup() {
+        resize();
+        const count = Math.min(65, Math.floor(w / 18));
+        embers = Array.from({ length: count }, () => new Ember());
+      }
+
+      function loop() {
+        ctx.clearRect(0, 0, w, h);
+        embers.forEach(e => { e.update(); e.draw(); });
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener('resize', setup);
+      setup();
+      loop();
+    })();
+
+    // =========================================================================
+    // 3. NAVEGACIÓN, INDICADOR DE LECTURA, MODO DISTRITO 12 Y MENÚ MÓVIL
+    // =========================================================================
+    const navContainer = document.getElementById('nav-container');
+    const progressBar = document.getElementById('reading-progress');
+    const timelineWrapper = document.getElementById('timeline-wrapper');
+    const timelineFill = document.getElementById('timeline-fill');
+
+    window.addEventListener('scroll', () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      progressBar.style.width = `${scrollPercent}%`;
+
+      if (scrollTop > 40) {
+        navContainer.classList.add('bg-brand-surface/90', 'backdrop-blur-md', 'border', 'border-brand-border', 'shadow-xl');
+      } else {
+        navContainer.classList.remove('bg-brand-surface/90', 'backdrop-blur-md', 'border', 'border-brand-border', 'shadow-xl');
+      }
+
+      // Dibujo progresivo de la línea de tiempo
+      if (timelineWrapper && timelineFill) {
+        const rect = timelineWrapper.getBoundingClientRect();
+        const windowH = window.innerHeight;
+        if (rect.top < windowH * 0.8) {
+          const drawn = Math.min(rect.height, Math.max(0, windowH * 0.65 - rect.top));
+          timelineFill.style.height = `${drawn}px`;
+        }
+      }
+    });
+
+    // Alternar Tema Oscuro / Distrito 12
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeLabel = document.getElementById('theme-label');
+    const themeDot = document.getElementById('theme-dot');
+
+    function applyTheme(isD12) {
+      document.body.classList.toggle('theme-d12', isD12);
+      themeLabel.textContent = isD12 ? 'Distrito 12' : 'Modo Oscuro';
+      themeDot.style.backgroundColor = isD12 ? '#3E5C45' : '#D7263D';
+      localStorage.setItem('hg_theme', isD12 ? 'd12' : 'dark');
+    }
+
+    if (localStorage.getItem('hg_theme') === 'd12') applyTheme(true);
+
+    themeToggle.addEventListener('click', () => {
+      const isCurrentlyD12 = document.body.classList.contains('theme-d12');
+      applyTheme(!isCurrentlyD12);
+    });
+
+    // Menú móvil
+    const mobileBtn = document.getElementById('mobile-menu-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const iconOpen = document.getElementById('icon-menu-open');
+    const iconClose = document.getElementById('icon-menu-close');
+
+    mobileBtn.addEventListener('click', () => {
+      const isHidden = mobileMenu.classList.toggle('hidden');
+      mobileBtn.setAttribute('aria-expanded', String(!isHidden));
+      iconOpen.classList.toggle('hidden', !isHidden);
+      iconClose.classList.toggle('hidden', isHidden);
+    });
+
+    document.querySelectorAll('.mobile-link').forEach(link => {
+      link.addEventListener('click', () => {
+        mobileMenu.classList.add('hidden');
+        iconOpen.classList.remove('hidden');
+        iconClose.classList.add('hidden');
+      });
+    });
+
+    // =========================================================================
+    // 4. CONTADORES ANIMADOS Y REVEAL AL HACER SCROLL
+    // =========================================================================
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          // Iniciar contadores si están dentro de la sección
+          entry.target.querySelectorAll('.counter').forEach(counter => {
+            if (counter.dataset.animated) return;
+            counter.dataset.animated = 'true';
+            const target = Number(counter.dataset.target);
+            let current = 0;
+            const step = Math.max(1, Math.ceil(target / 25));
+            const timer = setInterval(() => {
+              current += step;
+              if (current >= target) {
+                counter.textContent = target;
+                clearInterval(timer);
+              } else {
+                counter.textContent = current;
+              }
+            }, 45);
+          });
+        }
+      });
+    }, { threshold: 0.14 });
+
+    document.querySelectorAll('.reveal-on-scroll').forEach(el => observer.observe(el));
+
+    // =========================================================================
+    // 5. RENDERIZADO DE ETAPAS INTERACTIVAS (ACORDEONES + ICONOS SVG)
+    // =========================================================================
+    const STAGE_ICONS = {
+      bow: `<path d="M5 19L19 5M19 5h-6M19 5v6"/><path d="M4 11c2.5-5 9-7 15-6 1 6-1 12.5-6 15"/>`,
+      train: `<rect x="3" y="6" width="18" height="11" rx="3"/><path d="M3 13h18M7 17l-2 3M17 17l2 3"/><circle cx="7.5" cy="10" r="1"/><circle cx="16.5" cy="10" r="1"/>`,
+      fire: `<path d="M12 2c3.5 4.5 6.5 7.5 6.5 11.5a6.5 6.5 0 1 1-13 0C5.5 9.5 8.5 6.5 12 2z"/>`,
+      wasp: `<ellipse cx="12" cy="13" rx="4" ry="6"/><path d="M8 10L3 7M16 10l5-3M9 13h6M9 16h6M12 7V4"/>`,
+      flower: `<circle cx="12" cy="12" r="2.5"/><path d="M12 5a2.5 2.5 0 0 1 2.5 2.5c0 1.5-2.5 4.5-2.5 4.5S9.5 9 9.5 7.5A2.5 2.5 0 0 1 12 5zm0 14a2.5 2.5 0 0 1-2.5-2.5c0-1.5 2.5-4.5 2.5-4.5s2.5 3 2.5 4.5A2.5 2.5 0 0 1 12 19zM5 12a2.5 2.5 0 0 1 2.5-2.5c1.5 0 4.5 2.5 4.5 2.5s-3 2.5-4.5 2.5A2.5 2.5 0 0 1 5 12zm14 0a2.5 2.5 0 0 1-2.5 2.5c-1.5 0-4.5-2.5-4.5-2.5s3-2.5 4.5-2.5A2.5 2.5 0 0 1 19 12z"/>`,
+      stream: `<path d="M3 8c3-2 6 2 9 0s6 2 9 0M3 13c3-2 6 2 9 0s6 2 9 0M3 18c3-2 6 2 9 0s6 2 9 0"/>`
+    };
+
+    const exploredStages = new Set([0]);
+    const stageContent = document.getElementById('stage-content');
+    const stageTabs = document.querySelectorAll('.stage-tab');
+    const stageProgressText = document.getElementById('stage-progress-text');
+    const stageProgressBar = document.getElementById('stage-progress-bar');
+
+    function renderStage(index) {
+      exploredStages.add(index);
+      stageProgressText.textContent = `${exploredStages.size} / 3 exploradas`;
+      stageProgressBar.style.width = `${(exploredStages.size / 3) * 100}%`;
+
+      stageTabs.forEach((tab, idx) => {
+        if (idx === index) {
+          tab.classList.add('border-2', 'border-brand-fire', 'bg-brand-surface', 'shadow-md');
+          tab.classList.remove('border', 'border-brand-border', 'bg-brand-surface/60');
+        } else {
+          tab.classList.remove('border-2', 'border-brand-fire', 'bg-brand-surface', 'shadow-md');
+          tab.classList.add('border', 'border-brand-border', 'bg-brand-surface/60');
+        }
+      });
+
+      const stage = STAGES_DATA[index];
+      stageContent.innerHTML = `
+        <div class="rounded-3xl bg-brand-surface border border-brand-border p-6 sm:p-8 shadow-xl print-card">
+          <div class="mb-6 pb-5 border-b border-brand-border/60">
+            <span class="text-xs font-bold uppercase tracking-widest text-brand-fire">${stage.chapters}</span>
+            <h3 class="font-display text-2xl sm:text-3xl font-bold mt-1">${stage.title}</h3>
+            <p class="text-sm sm:text-base text-brand-muted mt-2">${stage.summary}</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            ${stage.moments.map((m, i) => `
+              <div class="accordion-item rounded-2xl bg-brand-surfaceAlt/80 border border-brand-border overflow-hidden transition-all">
+                <button type="button" class="accordion-trigger w-full text-left p-5 flex items-start justify-between gap-4 focus:outline-none">
+                  <div class="flex items-start gap-3.5">
+                    <span class="w-10 h-10 rounded-xl bg-brand-fire/15 border border-brand-gold/30 flex items-center justify-center text-brand-gold shrink-0 mt-0.5">
+                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        ${STAGE_ICONS[m.icon]}
+                      </svg>
+                    </span>
+                    <div>
+                      <h4 class="font-bold text-base text-brand-text">${m.title}</h4>
+                      <p class="text-xs sm:text-sm text-brand-muted mt-1">${m.brief}</p>
+                    </div>
+                  </div>
+                  <span class="accordion-chevron text-brand-gold transition-transform duration-300 mt-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </span>
+                </button>
+                <div class="accordion-panel ${i === 0 ? '' : 'hidden'} px-5 pb-5 pt-1 text-sm text-brand-text/90 leading-relaxed border-t border-brand-border/40">
+                  ${m.detail}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      // Activar acordeones recién renderizados
+      stageContent.querySelectorAll('.accordion-trigger').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const panel = btn.nextElementSibling;
+          const chevron = btn.querySelector('.accordion-chevron');
+          const isOpen = !panel.classList.contains('hidden');
+          panel.classList.toggle('hidden', isOpen);
+          chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+      });
+    }
+
+    stageTabs.forEach(tab => {
+      tab.addEventListener('click', () => renderStage(Number(tab.dataset.stage)));
+    });
+    renderStage(0);
+
+    // =========================================================================
+    // 6. RENDERIZADO DE PERSONAJES PRINCIPALES
+    // =========================================================================
+    const charactersGrid = document.getElementById('characters-grid');
+    charactersGrid.innerHTML = CHARACTERS_DATA.map(char => `
+      <article class="char-card group rounded-3xl bg-brand-surface border border-brand-border hover:border-brand-gold/60 p-6 transition-all duration-300 hover:-translate-y-1 shadow-lg cursor-pointer print-card">
+        <div class="flex items-center gap-4">
+          <div class="w-16 h-16 rounded-2xl bg-brand-bg border border-brand-border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <svg viewBox="0 0 80 80" class="w-14 h-14">${char.svgShape}</svg>
+          </div>
+          <div>
+            <span class="inline-block text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-brand-fire/15 text-brand-fire">
+              ${char.district}
+            </span>
+            <h3 class="font-display font-bold text-lg text-brand-text mt-1">${char.name}</h3>
+            <p class="text-xs text-brand-gold font-medium">${char.role}</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-1.5 mt-4">
+          ${char.traits.map(t => `
+            <span class="text-[11px] px-2.5 py-1 rounded-lg bg-brand-surfaceAlt text-brand-muted border border-brand-border/50">
+              ${t}
+            </span>
+          `).join('')}
+        </div>
+
+        <div class="char-extra mt-4 pt-3.5 border-t border-brand-border/60 text-sm text-brand-muted leading-relaxed">
+          <p class="text-brand-text/90">${char.idea}</p>
+        </div>
+      </article>
+    `).join('');
+
+    // =========================================================================
+    // 7. RENDERIZADO DE TEMAS CENTRALES
+    // =========================================================================
+    const themesGrid = document.getElementById('themes-grid');
+    themesGrid.innerHTML = THEMES_DATA.map(theme => `
+      <div class="group rounded-3xl bg-brand-surface border border-brand-border hover:border-brand-fire/60 p-6 transition-all duration-300 hover:-translate-y-1 shadow-md print-card">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-fire/20 to-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-brand-gold mb-4 group-hover:scale-110 transition-transform">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            ${theme.icon}
+          </svg>
+        </div>
+        <h3 class="font-display font-bold text-lg text-brand-text mb-2">${theme.title}</h3>
+        <p class="text-xs sm:text-sm text-brand-muted leading-relaxed">${theme.desc}</p>
+      </div>
+    `).join('');
+
+    // =========================================================================
+    // 8. RENDERIZADO DE LÍNEA DE TIEMPO EXPANDIBLE
+    // =========================================================================
+    const timelineItems = document.getElementById('timeline-items');
+    timelineItems.innerHTML = TIMELINE_DATA.map((item, idx) => {
+      const isLeft = idx % 2 === 0;
+      return `
+        <div class="relative pl-12 sm:pl-0 sm:grid sm:grid-cols-2 sm:gap-10 items-center">
+          <!-- Nodo central -->
+          <div class="absolute left-5 sm:left-1/2 top-6 w-4 h-4 rounded-full bg-brand-fire border-4 border-brand-bg -translate-x-1/2 z-10 shadow-[0_0_12px_#D7263D]"></div>
+
+          <div class="${isLeft ? 'sm:text-right sm:pr-4' : 'sm:col-start-2 sm:pl-4'}">
+            <button type="button" class="timeline-toggle w-full text-left ${isLeft ? 'sm:text-right' : ''} rounded-2xl bg-brand-surface border border-brand-border hover:border-brand-gold p-5 transition-all shadow-md">
+              <span class="text-xs font-bold uppercase tracking-wider text-brand-gold">${item.step}</span>
+              <h3 class="font-display font-bold text-base sm:text-lg text-brand-text mt-1">${item.title}</h3>
+              <p class="text-xs sm:text-sm text-brand-muted mt-1">${item.summary}</p>
+              <div class="timeline-detail hidden mt-3 pt-3 border-t border-brand-border/60 text-xs sm:text-sm text-brand-text/90 leading-relaxed">
+                ${item.details}
+              </div>
+              <span class="inline-block mt-2.5 text-[11px] font-semibold text-brand-fire">
+                Pulsa para expandir / contraer
+              </span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    document.querySelectorAll('.timeline-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const detail = btn.querySelector('.timeline-detail');
+        detail.classList.toggle('hidden');
+      });
+    });
+
+    // =========================================================================
+    // 9. RENDERIZADO DE SÍMBOLOS CON TARJETAS FLIP 3D
+    // =========================================================================
+    const symbolsGrid = document.getElementById('symbols-grid');
+    symbolsGrid.innerHTML = SYMBOLS_DATA.map(sym => `
+      <div class="flip-card perspective-1000 h-64 cursor-pointer" tabindex="0" role="button" aria-label="Voltear tarjeta ${sym.title}">
+        <div class="flip-card-inner">
+          <!-- Frente -->
+          <div class="flip-card-front bg-brand-surface border border-brand-border p-6 flex flex-col justify-between shadow-lg">
+            <div>
+              <span class="text-[11px] font-bold uppercase tracking-widest text-brand-gold">${sym.tag}</span>
+              <h3 class="font-display font-bold text-xl text-brand-text mt-2">${sym.title}</h3>
+              <p class="text-sm text-brand-muted mt-3 leading-relaxed">${sym.frontDesc}</p>
+            </div>
+            <div class="flex items-center justify-between text-xs font-semibold text-brand-fire pt-3 border-t border-brand-border/50">
+              <span>Toca para descubrir significado</span>
+              <span>↻</span>
+            </div>
+          </div>
+
+          <!-- Reverso -->
+          <div class="flip-card-back bg-gradient-to-br from-brand-surfaceAlt to-brand-surface border-2 border-brand-gold/60 p-6 flex flex-col justify-between shadow-xl">
+            <div>
+              <h4 class="font-display font-bold text-base text-brand-gold mb-2">${sym.title}</h4>
+              <p class="text-xs sm:text-sm text-brand-text/95 leading-relaxed">${sym.backDesc}</p>
+            </div>
+            <span class="text-[11px] text-brand-muted text-right">Toca para volver</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    document.querySelectorAll('.flip-card').forEach(card => {
+      const toggleFlip = () => card.classList.toggle('flipped');
+      card.addEventListener('click', toggleFlip);
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleFlip();
+        }
+      });
+    });
+
+    // =========================================================================
+    // 10. REFLEXIÓN EN LOCALSTORAGE Y DESCARGA EN TEXTO / IMPRESIÓN
+    // =========================================================================
+    const reflectionForm = document.getElementById('reflection-form');
+    const personalNote = document.getElementById('personal-note');
+    const saveConfirmation = document.getElementById('save-confirmation');
+
+    function loadReflections() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('hg_reflections_v1'));
+        if (!saved) return;
+        ['q1', 'q2', 'q3'].forEach(q => {
+          if (saved[q]) {
+            const radio = reflectionForm.querySelector(`input[name="${q}"][value="${CSS.escape(saved[q])}"]`);
+            if (radio) radio.checked = true;
+          }
+        });
+        if (saved.note) personalNote.value = saved.note;
+      } catch (err) {
+        console.error('Error al cargar reflexiones:', err);
+      }
+    }
+
+    loadReflections();
+
+    reflectionForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const formData = new FormData(reflectionForm);
+      const payload = {
+        q1: formData.get('q1') || '',
+        q2: formData.get('q2') || '',
+        q3: formData.get('q3') || '',
+        note: personalNote.value.trim(),
+        updatedAt: new Date().toLocaleString('es-ES')
+      };
+      localStorage.setItem('hg_reflections_v1', JSON.stringify(payload));
+      saveConfirmation.classList.remove('hidden');
+      saveConfirmation.classList.add('flex');
+      setTimeout(() => {
+        saveConfirmation.classList.add('hidden');
+        saveConfirmation.classList.remove('flex');
+      }, 3500);
+    });
+
+    // Descargar resumen completo en archivo .txt
+    document.getElementById('download-txt-btn').addEventListener('click', () => {
+      const saved = JSON.parse(localStorage.getItem('hg_reflections_v1') || '{}');
+      const lines = [
+        "LOS JUEGOS DEL HAMBRE (SUZANNE COLLINS) - RESUMEN INTERACTIVO (CAPS. 1 AL 19)",
+        "===========================================================================",
+        "",
+        "1. ETAPAS NARRATIVAS:",
+        ...STAGES_DATA.flatMap(s => [
+          `\n[${s.title} - ${s.chapters}]`,
+          s.summary,
+          ...s.moments.map(m => `  * ${m.title}: ${m.detail}`)
+        ]),
+        "",
+        "2. PERSONAJES PRINCIPALES:",
+        ...CHARACTERS_DATA.map(c => `  - ${c.name} (${c.district} | ${c.role}): ${c.idea}`),
+        "",
+        "3. SÍMBOLOS CLAVE:",
+        ...SYMBOLS_DATA.map(sym => `  - ${sym.title}: ${sym.backDesc}`),
+        "",
+        "4. MIS REFLEXIONES GUARDADAS:",
+        `  - Dilema 1 (Sacrificio): ${saved.q1 || 'Sin seleccionar'}`,
+        `  - Dilema 2 (Identidad): ${saved.q2 || 'Sin seleccionar'}`,
+        `  - Dilema 3 (Alianza y compasión): ${saved.q3 || 'Sin seleccionar'}`,
+        `  - Nota personal: ${saved.note || 'Sin nota escrita'}`
+      ];
+
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Resumen_Los_Juegos_del_Hambre_Cap1_19.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // Imprimir
+    document.getElementById('print-btn').addEventListener('click', () => {
+      window.print();
+    });
+  </script>
+</body>
+</html>
